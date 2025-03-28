@@ -22,18 +22,28 @@
    </header>
    <main>
     <section class="flex flex-col items-center justify-center min-h-screen bg-gray-100">
-        <h1 class="text-2xl font-bold text-blue-700 mb-4">PPG Signal Extraction</h1>
+        <h1 class="text-2xl font-bold mb-4">Real-time PPG Signal Capture</h1>
     
-        <video id="video" autoplay playsinline class="w-full max-w-md border rounded-lg shadow-lg"></video>
+        <!-- Video Element -->
+        <video id="video" class="border border-gray-300 rounded-lg mb-4" autoplay></video>
     
+        <!-- Start Button -->
+        <button id="startBtn" class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 mb-4">
+            Start Recording
+        </button>
+    
+        <!-- Status Text -->
+        <div id="status" class="text-lg text-gray-700 mb-4">Status: Waiting for action...</div>
+    
+        <!-- Raw PPG Data -->
+        <div id="ppgData" class="text-sm text-gray-600 mb-4">Raw PPG Data:</div>
+    
+        <!-- Canvas Element for Drawing -->
         <canvas id="canvas" class="hidden"></canvas>
     
-        <button id="startBtn" class="bg-blue-600 text-white px-4 py-2 rounded-lg mt-4">Start Recording</button>
-        <p id="status" class="text-gray-600 mt-2"></p>
+        <!-- Chart.js Canvas for Plotting -->
+        <canvas id="ppgChart" class="w-full h-64 bg-white border border-gray-300 rounded-lg mt-4"></canvas>
     
-        <h2 class="text-xl font-bold mt-6">Raw PPG Signal Over Time</h2>
-      
-        <canvas id="ppgChart" width="400" height="200"></canvas>
     
    </main>
 
