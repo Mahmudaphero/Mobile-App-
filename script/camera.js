@@ -8,44 +8,6 @@ const ppgDataElement = document.getElementById("ppgData");
 let mediaRecorder;
 let chunks = [];
 let rawPPG = [];
-let timeStamps = []; // Array to hold timestamps for the x-axis of the plot
-let ppgChart;
-
-// Initialize the chart
-function initializePPGChart() {
-    const ctx = document.getElementById('ppgChart').getContext('2d');
-    ppgChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: timeStamps, // X-axis data (time stamps)
-            datasets: [{
-                label: 'Real-time PPG Signal',
-                data: rawPPG, // Y-axis data (PPG signal)
-                borderColor: 'rgba(75, 192, 192, 1)',
-                backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                fill: true
-            }]
-        },
-        options: {
-            scales: {
-                x: {
-                    type: 'linear',
-                    position: 'bottom',
-                    title: {
-                        display: true,
-                        text: 'Time (ms)'
-                    }
-                },
-                y: {
-                    title: {
-                        display: true,
-                        text: 'Signal (Intensity)'
-                    }
-                }
-            }
-        }
-    });
-}
 
 async function startCamera() {
     try {
@@ -55,7 +17,7 @@ async function startCamera() {
         });
 
         videoElement.srcObject = stream;
-
+        
         // Enable Flashlight (Torch)
         const [track] = stream.getVideoTracks();
         const capabilities = track.getCapabilities();
@@ -89,39 +51,26 @@ function processVideoFrames(stream) {
     const imageCapture = new ImageCapture(track);
 
     rawPPG = [];
-    timeStamps = [];
-
-    let startTime = Date.now();  // To track the real time elapsed
 
     function captureFrame() {
-        const elapsedTime = Date.now() - startTime; // Time elapsed in milliseconds
+        imageCapture.grabFrame().then((imageBitmap) => {
+            canvas.width = imageBitmap.width;
+            canvas.height = imageBitmap.height;
+            ctx.drawImage(imageBitmap, 0, 0, canvas.width, canvas.height);
 
-        // Only capture frames from the 3rd second to the 13th second
-        if (elapsedTime >= 3000 && elapsedTime <= 13000) {
-            imageCapture.grabFrame().then((imageBitmap) => {
-                canvas.width = imageBitmap.width;
-                canvas.height = imageBitmap.height;
-                ctx.drawImage(imageBitmap, 0, 0, canvas.width, canvas.height);
+            const frameData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            let totalRed = 0, pixelCount = frameData.data.length / 4;
 
-                const frameData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                let totalRed = 0, pixelCount = frameData.data.length / 4;
+            for (let i = 0; i < frameData.data.length; i += 4) {
+                totalRed += frameData.data[i];  // Extract Red Channel
+            }
 
-                for (let i = 0; i < frameData.data.length; i += 4) {
-                    totalRed += frameData.data[i];  // Extract Red Channel
-                }
+            let avgRed = totalRed / pixelCount;
+            rawPPG.push(avgRed);
 
-                let avgRed = totalRed / pixelCount;
-                rawPPG.push(avgRed);
+            ppgDataElement.innerText = rawPPG.join(", ");
 
-                // Record time in ms for the x-axis
-                timeStamps.push(elapsedTime);
-
-                ppgDataElement.innerText = rawPPG.join(", ");
-
-                // Update the chart with the new PPG data
-                updatePPGChart(timeStamps, rawPPG);
-            }).catch(error => console.error("Frame capture error:", error));
-        }
+        }).catch(error => console.error("Frame capture error:", error));
     }
 
     let frameCaptureInterval = setInterval(captureFrame, 100);  // Capture every 100ms
@@ -130,32 +79,20 @@ function processVideoFrames(stream) {
         clearInterval(frameCaptureInterval);
         console.log("PPG Signal Extraction Complete");
         statusText.innerText = "PPG Signal Extraction Complete";
-    }, 15000); // Stop capturing after 15 seconds (recorded video time)
-}
-
-function updatePPGChart(timeStamps, rawPPG) {
-    if (ppgChart) {
-        ppgChart.data.labels = timeStamps;
-        ppgChart.data.datasets[0].data = rawPPG;
-        ppgChart.update();
-    }
+    }, 15000);
 }
 
 // Start Recording
 startBtn.addEventListener("click", () => {
-    if (mediaRecorder && mediaRecorder.state === "inactive") {
-        mediaRecorder.start();
-        startBtn.classList.add("hidden");
-        statusText.innerText = "Recording...";
+    mediaRecorder.start();
+    startBtn.classList.add("hidden");
+    statusText.innerText = "Recording...";
 
-        setTimeout(() => {
-            mediaRecorder.stop();
-            startBtn.classList.remove("hidden");
-            statusText.innerText = "Processing PPG Data...";
-        }, 15000); // Stop after 15 seconds
-    }
+    setTimeout(() => {
+        mediaRecorder.stop();
+        startBtn.classList.remove("hidden");
+        statusText.innerText = "Processing PPG Data...";
+    }, 15000); // Stop after 15 seconds
 });
 
-// Initialize chart and camera on page load
-initializePPGChart();
 startCamera();
