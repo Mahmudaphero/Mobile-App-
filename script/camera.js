@@ -3,11 +3,36 @@ const startBtn = document.getElementById("startBtn");
 const statusText = document.getElementById("status");
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
-const ppgDataElement = document.getElementById("ppgData");
+const ppgChartCtx = document.getElementById("ppgChart").getContext("2d");
 
 let mediaRecorder;
 let chunks = [];
 let rawPPG = [];
+let timestamps = [];
+let startTime;
+
+// Create Chart.js PPG graph
+const ppgChart = new Chart(ppgChartCtx, {
+    type: 'line',
+    data: {
+        labels: [],
+        datasets: [{
+            label: 'Red Channel Intensity',
+            data: [],
+            borderColor: 'red',
+            borderWidth: 2,
+            fill: false,
+            pointRadius: 1,
+            tension: 0.2
+        }]
+    },
+    options: {
+        scales: {
+            x: { title: { display: true, text: 'Time (ms)' } },
+            y: { title: { display: true, text: 'Red Intensity' }, min: 0, max: 255 }
+        }
+    }
+});
 
 async function startCamera() {
     try {
@@ -17,7 +42,7 @@ async function startCamera() {
         });
 
         videoElement.srcObject = stream;
-        
+
         // Enable Flashlight (Torch)
         const [track] = stream.getVideoTracks();
         const capabilities = track.getCapabilities();
@@ -35,8 +60,7 @@ async function startCamera() {
 
         mediaRecorder.onstop = () => {
             const blob = new Blob(chunks, { type: "video/mp4" });
-            const url = URL.createObjectURL(blob);
-            console.log("Video recorded:", url);
+            console.log("Video recorded:", URL.createObjectURL(blob));
             processVideoFrames(stream);
             chunks = [];
         };
@@ -51,6 +75,8 @@ function processVideoFrames(stream) {
     const imageCapture = new ImageCapture(track);
 
     rawPPG = [];
+    timestamps = [];
+    startTime = Date.now();
 
     function captureFrame() {
         imageCapture.grabFrame().then((imageBitmap) => {
@@ -66,9 +92,15 @@ function processVideoFrames(stream) {
             }
 
             let avgRed = totalRed / pixelCount;
-            rawPPG.push(avgRed);
+            let elapsedTime = Date.now() - startTime;
 
-            ppgDataElement.innerText = rawPPG.join(", ");
+            rawPPG.push(avgRed);
+            timestamps.push(elapsedTime);
+
+            // Update Chart
+            ppgChart.data.labels.push(elapsedTime);
+            ppgChart.data.datasets[0].data.push(avgRed);
+            ppgChart.update();
 
         }).catch(error => console.error("Frame capture error:", error));
     }
@@ -92,7 +124,7 @@ startBtn.addEventListener("click", () => {
         mediaRecorder.stop();
         startBtn.classList.remove("hidden");
         statusText.innerText = "Processing PPG Data...";
-    }, 15000); // Stop after 15 seconds
+    }, 15000);
 });
 
 startCamera();
