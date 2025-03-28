@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=h1, initial-scale=1.0">
+    <title>Document</title>
+    <!--Daisy UI-->
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css" />
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+</head>
+<body class="bg-slate-800" >
+  <section class="max-w-md min-h-screen mx-auto py-6 bg-gray-200">
+   <header>
+    <nav class="flex justify-around items-center">
+        <img class="mix-blend-multiply w-20" src="images/nav2.PNG" alt="">
+        <div>
+            <h1 class="text-2xl font-bold text-blue-950">Data Collection</h1>
+            <p class="border border-blue-950 text-blue-950 p-1 text-center text-xl font-semibold">Dept.EEE,IUB</p>
+        </div>
+        <button class="btn">Logout</button>
+    </nav>
+   </header>
+   <main>
+    <section class="flex items-center justify-center h-screen bg-gray-100">
+        <div class="text-center">
+            <video id="video" class="w-80 h-48 border rounded-lg mb-4" autoplay></video>
+            <div class="space-x-2">
+                <button id="startBtn" class="bg-blue-500 text-white px-4 py-2 rounded-md">Start Recording</button>
+                <button id="stopBtn" class="bg-red-500 text-white px-4 py-2 rounded-md hidden">Stop</button>
+            </div>
+        </div>
+    </section>
+   </main>
+
+  </section>
+
+  <script src="script/camera.js"></script>
+</body>
+</html>

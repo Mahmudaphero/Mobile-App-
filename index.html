@@ -4,77 +4,42 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Document</title>
-
-    <!--Daisy UI-->
-   
     <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css" />
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <!--GOOGLE FONT-->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@100..800&display=swap" rel="stylesheet">
-    <style>
-        .sora {
-        font-family: "Sora", sans-serif;
-}
-    </style>
-  
+
 </head>
-<body>
+<body class="bg-slate-800">
+ <section class="max-w-md min-h-screen mx-auto py-6 bg-gray-200">
     <header>
-        <nav>
-            <div class="navbar bg-sky-300 shadow-sm">
-                <div class="navbar-start">
-                  <div class="dropdown">
-                    <div tabindex="0" role="button" class="btn btn-ghost lg:hidden">
-                      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h8m-8 6h16" /> </svg>
-                    </div>
-                    <ul
-                      tabindex="0"
-                      class="menu menu-sm dropdown-content bg-base-100 rounded-box z-1 mt-3 w-52 p-2 shadow ">
-                      <li><a>Platelet</a></li>
-                      <li>
-                        <a>Blood Parameter</a>
-                        <ul class="p-2">
-                          <li><a>Hemoglobin Measurement</a></li>
-                          <li><a>Glucose Measurment</a></li>
-                        </ul>
-                      </li>
-                      <li><a>Dengue</a></li>
-                    </ul>
-                  </div >
-                  <img class="w-1/8 h-1/8" src="images/navlogo.PNG" alt="">
-                  <a>Medi App</a>
-                </div>
-                <div class="navbar-center hidden lg:flex">
-                  <ul class="menu menu-horizontal px-1">
-                    <li><a>Platelet</a></li>
-                    <li>
-                      <details>
-                        <summary>Blood Parameter</summary>
-                        <ul class="p-2">
-                          <li><a>Hemoglobin Measurement</a></li>
-                          <li><a>Glucose Measurment</a></li>
-                        </ul>
-                      </details>
-                    </li>
-                    <li><a>Dengue</a></li>
-                  </ul>
-                </div>
-                <div class="navbar-end">
-                  <a class="btn">Login</a>
-                </div>
-              </div>
+        <nav class="flex justify-center items-center mt-6">
+            <div class="mt-10 relative flex justify-center items-center w-9/12 mb-10">
+                <img class="w-48 absolute" src="images/bg.png" alt="">
+                <img class="w-20" src="images/nav1.PNG" alt="">
+            </div>
         </nav>
 
     </header>
-    <main>
-
-    </main>
-    <footer>
-
-    </footer>
-
+    <!--Login Section-->
+    <div class="hero">
+        <div class="hero-content flex-col lg:flex-row-reverse">
+          
+          <div class="card bg-base-100 w-full max-w-sm shrink-0 shadow-2xl">
+            <div class="card-body">
+              <fieldset class="fieldset">
+                <label class="fieldset-label">User ID</label>
+                <input id="user-id" type="text" class="input" placeholder="Enter the user ID" required />
+                <label class="fieldset-label">Password</label>
+                <input id="password" type="password" class="input" placeholder="Password" required/>
+                <div><a class="link link-hover">Forgot password?</a></div>
+                <button id="login-btn" class="btn btn-neutral mt-4">Login</button>
+              </fieldset>
+            </div>
+          </div>
+        </div>
+      </div>
+ </section>
     
+    <script src="script/login.js"></script>
+    <script src="script/camera.js"></script>
 </body>
 </html>
