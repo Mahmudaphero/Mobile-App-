@@ -3,36 +3,14 @@ const startBtn = document.getElementById("startBtn");
 const statusText = document.getElementById("status");
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
-const ppgChartCtx = document.getElementById("ppgChart").getContext("2d");
+const ppgDataElement = document.getElementById("ppgData");
 
+// Initialize chart data
 let mediaRecorder;
 let chunks = [];
 let rawPPG = [];
-let timestamps = [];
-let startTime;
-
-// Create Chart.js PPG graph
-const ppgChart = new Chart(ppgChartCtx, {
-    type: 'line',
-    data: {
-        labels: [],
-        datasets: [{
-            label: 'Red Channel Intensity',
-            data: [],
-            borderColor: 'red',
-            borderWidth: 2,
-            fill: false,
-            pointRadius: 1,
-            tension: 0.2
-        }]
-    },
-    options: {
-        scales: {
-            x: { title: { display: true, text: 'Time (ms)' } },
-            y: { title: { display: true, text: 'Red Intensity' }, min: 0, max: 255 }
-        }
-    }
-});
+let timeStamps = []; // Array to hold timestamps for the x-axis of the plot
+let ppgChart;
 
 async function startCamera() {
     try {
@@ -42,7 +20,7 @@ async function startCamera() {
         });
 
         videoElement.srcObject = stream;
-
+        
         // Enable Flashlight (Torch)
         const [track] = stream.getVideoTracks();
         const capabilities = track.getCapabilities();
@@ -60,7 +38,8 @@ async function startCamera() {
 
         mediaRecorder.onstop = () => {
             const blob = new Blob(chunks, { type: "video/mp4" });
-            console.log("Video recorded:", URL.createObjectURL(blob));
+            const url = URL.createObjectURL(blob);
+            console.log("Video recorded:", url);
             processVideoFrames(stream);
             chunks = [];
         };
@@ -75,8 +54,7 @@ function processVideoFrames(stream) {
     const imageCapture = new ImageCapture(track);
 
     rawPPG = [];
-    timestamps = [];
-    startTime = Date.now();
+    timeStamps = [];
 
     function captureFrame() {
         imageCapture.grabFrame().then((imageBitmap) => {
@@ -92,15 +70,15 @@ function processVideoFrames(stream) {
             }
 
             let avgRed = totalRed / pixelCount;
-            let elapsedTime = Date.now() - startTime;
-
             rawPPG.push(avgRed);
-            timestamps.push(elapsedTime);
 
-            // Update Chart
-            ppgChart.data.labels.push(elapsedTime);
-            ppgChart.data.datasets[0].data.push(avgRed);
-            ppgChart.update();
+            // Record time in ms for the x-axis
+            timeStamps.push(timeStamps.length * 100);
+
+            ppgDataElement.innerText = rawPPG.join(", ");
+
+            // Update the chart with the new PPG data
+            updatePPGChart(timeStamps, rawPPG);
 
         }).catch(error => console.error("Frame capture error:", error));
     }
@@ -114,6 +92,50 @@ function processVideoFrames(stream) {
     }, 15000);
 }
 
+function updatePPGChart(timeStamps, rawPPG) {
+    if (ppgChart) {
+        ppgChart.data.labels = timeStamps;
+        ppgChart.data.datasets[0].data = rawPPG;
+        ppgChart.update();
+    }
+}
+
+// Initialize the chart
+function initializePPGChart() {
+    const ctx = document.getElementById('ppgChart').getContext('2d');
+    ppgChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: timeStamps, // X-axis data (time stamps)
+            datasets: [{
+                label: 'Real-time PPG Signal',
+                data: rawPPG, // Y-axis data (PPG signal)
+                borderColor: 'rgba(75, 192, 192, 1)',
+                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                fill: true
+            }]
+        },
+        options: {
+            scales: {
+                x: {
+                    type: 'linear',
+                    position: 'bottom',
+                    title: {
+                        display: true,
+                        text: 'Time (ms)'
+                    }
+                },
+                y: {
+                    title: {
+                        display: true,
+                        text: 'Signal (Intensity)'
+                    }
+                }
+            }
+        }
+    });
+}
+
 // Start Recording
 startBtn.addEventListener("click", () => {
     mediaRecorder.start();
@@ -124,7 +146,9 @@ startBtn.addEventListener("click", () => {
         mediaRecorder.stop();
         startBtn.classList.remove("hidden");
         statusText.innerText = "Processing PPG Data...";
-    }, 15000);
+    }, 15000); // Stop after 15 seconds
 });
 
+// Initialize chart on page load
+initializePPGChart();
 startCamera();
