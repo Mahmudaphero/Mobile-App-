@@ -9,6 +9,7 @@ let mediaRecorder;
 let chunks = [];
 let frameData = [];
 
+// Start Camera and Enable Flashlight
 async function startCamera() {
     try {
         const stream = await navigator.mediaDevices.getUserMedia({
@@ -19,7 +20,6 @@ async function startCamera() {
         videoElement.srcObject = stream;
         videoElement.play();
 
-        // Access the video track to control the flashlight
         const [track] = stream.getVideoTracks();
         const capabilities = track.getCapabilities();
 
@@ -33,35 +33,39 @@ async function startCamera() {
         // Initialize MediaRecorder
         mediaRecorder = new MediaRecorder(stream);
         mediaRecorder.ondataavailable = (event) => chunks.push(event.data);
-
         mediaRecorder.onstop = () => {
             const blob = new Blob(chunks, { type: "video/mp4" });
-            const url = URL.createObjectURL(blob);
-            console.log("Video recorded:", url);
+            console.log("Video recorded:", URL.createObjectURL(blob));
             chunks = [];
         };
 
     } catch (error) {
         console.error("Error accessing camera:", error);
-        alert("Error: Camera access denied or not supported!");
+        alert("Camera access denied or not supported!");
     }
 }
 
-// Function to extract frames from video
+// Extract Frames
 function extractFrames() {
+    frameData = [];
     let frameCount = 0;
 
     function captureFrame() {
-        if (frameCount >= 300) return;  // Limit to 300 frames (~10s at 30 FPS)
-        
+        if (frameCount >= 450) return;  // 15 seconds at 30 FPS
+
         ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
-        const frame = cv.imread(canvas);
-        const meanColor = cv.mean(frame);
+        let frame = cv.imread(canvas);
 
+        if (frame.empty) {
+            console.error("Failed to read frame.");
+            return;
+        }
+
+        let meanColor = cv.mean(frame);
         frameData.push({ R: meanColor[0], G: meanColor[1], B: meanColor[2] });
-        frameCount++;
 
-        setTimeout(captureFrame, 33); // Capture frames at 30 FPS (every 33ms)
+        frameCount++;
+        setTimeout(captureFrame, 33); // Capture frames at 30 FPS
     }
 
     captureFrame();
@@ -71,11 +75,16 @@ function extractFrames() {
         console.log(csvData);
         ppgDataElement.textContent = csvData;
         processPPG(frameData);
-    }, 10000);
+    }, 15000);
 }
 
 // Process PPG Signal
 function processPPG(data) {
+    if (data.length === 0) {
+        console.error("No PPG data found.");
+        return;
+    }
+
     let redChannel = data.map(d => d.R);
 
     function bandPassFilter(signal) {
@@ -86,7 +95,11 @@ function processPPG(data) {
         const low = (BPM_L / 60) / nyquist;
         const high = (BPM_H / 60) / nyquist;
 
-        let filteredSignal = signal.map(val => val * low); // Placeholder filter
+        // Simple high-pass filtering to remove low-frequency noise (improve signal clarity)
+        let filteredSignal = signal.map((val, index) => {
+            return index > 0 ? val - 0.9 * signal[index - 1] : val;
+        });
+
         return filteredSignal;
     }
 
@@ -98,7 +111,12 @@ function processPPG(data) {
             type: 'line',
             data: {
                 labels: time,
-                datasets: [{ label: 'Filtered Signal', data: signal, borderColor: 'red', borderWidth: 2 }]
+                datasets: [{
+                    label: 'Filtered Signal',
+                    data: signal,
+                    borderColor: 'red',
+                    borderWidth: 2
+                }]
             },
             options: { responsive: true }
         });
@@ -118,14 +136,13 @@ startBtn.addEventListener("click", () => {
     mediaRecorder.start();
     extractFrames();
     startBtn.classList.add("hidden");
-    statusText.innerText = "Recording..";
+    statusText.innerText = "Recording...";
 
     setTimeout(() => {
         mediaRecorder.stop();
         startBtn.classList.remove("hidden");
         statusText.innerText = "Processing PPG Data...";
-    }, 10000);
+    }, 15000);
 });
 
-// Start the camera when the page loads
 startCamera();
