@@ -1,3 +1,8 @@
+import { createFFmpeg, fetchFile } from '@ffmpeg/ffmpeg';
+import cv from '@techstark/opencv-js';
+import Papa from 'papaparse';
+import { Chart } from 'chart.js';
+
 const videoElement = document.getElementById("video");
 const startBtn = document.getElementById("startBtn");
 const statusText = document.getElementById("status");
@@ -18,7 +23,6 @@ async function startCamera() {
 
         videoElement.srcObject = stream;
         
-        // Enable Flashlight (Torch)
         const [track] = stream.getVideoTracks();
         const capabilities = track.getCapabilities();
 
@@ -29,7 +33,6 @@ async function startCamera() {
             console.warn("Torch is not supported on this device.");
         }
 
-        // Setup MediaRecorder
         mediaRecorder = new MediaRecorder(stream);
         mediaRecorder.ondataavailable = (event) => chunks.push(event.data);
 
@@ -37,62 +40,121 @@ async function startCamera() {
             const blob = new Blob(chunks, { type: "video/mp4" });
             const url = URL.createObjectURL(blob);
             console.log("Video recorded:", url);
-            processVideoFrames(stream);
+            processVideo(url);
             chunks = [];
         };
-
     } catch (error) {
         console.error("Error accessing camera:", error);
     }
 }
 
-function processVideoFrames(stream) {
-    const track = stream.getVideoTracks()[0];
-    const imageCapture = new ImageCapture(track);
-
-    rawPPG = [];
-
-    function captureFrame() {
-        imageCapture.grabFrame().then((imageBitmap) => {
-            canvas.width = imageBitmap.width;
-            canvas.height = imageBitmap.height;
-            ctx.drawImage(imageBitmap, 0, 0, canvas.width, canvas.height);
-
-            const frameData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            let totalRed = 0, pixelCount = frameData.data.length / 4;
-
-            for (let i = 0; i < frameData.data.length; i += 4) {
-                totalRed += frameData.data[i];  // Extract Red Channel
-            }
-
-            let avgRed = totalRed / pixelCount;
-            rawPPG.push(avgRed);
-
-            ppgDataElement.innerText = rawPPG.join(", ");
-
-        }).catch(error => console.error("Frame capture error:", error));
+async function processVideo(inputVideoPath) {
+    const ffmpeg = createFFmpeg({ log: true });
+    await ffmpeg.load();
+    
+    const timestamp = Date.now();
+    const outputVideoPath = `cropped_${timestamp}.mp4`;
+    
+    await ffmpeg.FS('writeFile', 'input.mp4', await fetchFile(inputVideoPath));
+    await ffmpeg.run('-i', 'input.mp4', '-ss', '3', '-c', 'copy', outputVideoPath);
+    
+    const outputFile = ffmpeg.FS('readFile', outputVideoPath);
+    const videoBlob = new Blob([outputFile.buffer], { type: 'video/mp4' });
+    
+    const videoUrl = URL.createObjectURL(videoBlob);
+    
+    const cap = new cv.VideoCapture(videoUrl);
+    let sec = 0;
+    const frameRate = 1 / 30;
+    let count = 100;
+    let frames = [];
+    
+    function getFrame(sec) {
+        cap.set(cv.CAP_PROP_POS_MSEC, sec * 1000);
+        let frame = new cv.Mat();
+        let success = cap.read(frame);
+        if (success) {
+            frames.push(frame);
+        }
+        return success;
     }
-
-    let frameCaptureInterval = setInterval(captureFrame, 100);  // Capture every 100ms
-
-    setTimeout(() => {
-        clearInterval(frameCaptureInterval);
-        console.log("PPG Signal Extraction Complete");
-        statusText.innerText = "PPG Signal Extraction Complete";
-    }, 15000);
+    
+    let success = getFrame(sec);
+    while (success && count < 400) {
+        count++;
+        sec += frameRate;
+        sec = parseFloat(sec.toFixed(2));
+        success = getFrame(sec);
+    }
+    
+    let data = [];
+    frames.forEach(frame => {
+        let avgR = cv.mean(frame)[0];
+        let avgG = cv.mean(frame)[1];
+        let avgB = cv.mean(frame)[2];
+        data.push({ R: avgR, G: avgG, B: avgB });
+    });
+    
+    function bandPassFilter(signal) {
+        const fps = 30;
+        const BPM_L = 60;
+        const BPM_H = 220;
+        const order = 6;
+        const nyquist = fps / 2;
+        const low = (BPM_L / 60) / nyquist;
+        const high = (BPM_H / 60) / nyquist;
+        
+        let b = [low, high]; // Placeholder for actual filter coefficients
+        let a = [1]; // Placeholder for actual filter coefficients
+        
+        let filteredSignal = signal.map((val, i) => val * b[0]); // Placeholder filtering
+        return filteredSignal;
+    }
+    
+    let filteredSignal = bandPassFilter(data.map(d => d.R));
+    
+    function plotData(time, signal, canvasId) {
+        const ctx = document.getElementById(canvasId).getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: time,
+                datasets: [{
+                    label: 'Filtered Signal',
+                    data: signal,
+                    borderColor: 'red',
+                    borderWidth: 2,
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    x: { title: { display: true, text: 'Time (s)' } },
+                    y: { title: { display: true, text: 'Amplitude' } }
+                }
+            }
+        });
+    }
+    
+    let time = Array.from({ length: filteredSignal.length }, (_, i) => i / 30);
+    plotData(time, filteredSignal, 'plotCanvas');
+    
+    const csv = Papa.unparse(data);
+    console.log(csv);
+    
+    return { videoUrl, frames, csv };
 }
 
-// Start Recording
 startBtn.addEventListener("click", () => {
     mediaRecorder.start();
     startBtn.classList.add("hidden");
     statusText.innerText = "Recording...";
-
+    
     setTimeout(() => {
         mediaRecorder.stop();
         startBtn.classList.remove("hidden");
         statusText.innerText = "Processing PPG Data...";
-    }, 15000); // Stop after 15 seconds
+    }, 15000);
 });
 
 startCamera();
