@@ -118,7 +118,7 @@ startBtn.addEventListener("click", () => {
     mediaRecorder.start();
     extractFrames();
     startBtn.classList.add("hidden");
-    statusText.innerText = "Recording...";
+    statusText.innerText = "Recording..";
 
     setTimeout(() => {
         mediaRecorder.stop();
